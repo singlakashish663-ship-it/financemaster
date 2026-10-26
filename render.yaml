@@ -1,19 +1,38 @@
 services:
   - type: web
     name: financequest-api
-    env: node
+    runtime: node
+    region: oregon
     plan: free
+    branch: main
     rootDir: server
     buildCommand: npm install
-    startCommand: node src/index.js
+    startCommand: npm start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
+      - key: CLIENT_URL
+        sync: false
       - key: MONGODB_URI
         sync: false
       - key: FIREBASE_PROJECT_ID
-        value: financemaster-3713b
-      - key: CLIENT_URL
         sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX
+        value: 200
+      - key: MARKET_DATA_PROVIDER
+        value: simulation
+      - key: PAYMENT_PROVIDER
+        value: placeholder
