@@ -16,10 +16,18 @@ app.use(helmet({
 const allowedOrigins = [
   process.env.CLIENT_URL || 'http://localhost:5173',
   'http://localhost:3000',
+  'https://client-taupe-five-76.vercel.app',
+  /\.vercel\.app$/,  // Allow all Vercel deployments
 ];
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    if (!origin) return cb(null, true);
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (typeof allowed === 'string') return allowed === origin;
+      if (allowed instanceof RegExp) return allowed.test(origin);
+      return false;
+    });
+    if (isAllowed) return cb(null, true);
     cb(new Error('Not allowed by CORS'));
   },
   credentials: true,
