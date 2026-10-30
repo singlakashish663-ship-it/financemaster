@@ -19,6 +19,7 @@ function CandlestickChart({ stockId }) {
   const seriesRef    = useRef(null);
   const [timeframe, setTimeframe] = useState('1d');
   const [loading,   setLoading]   = useState(true);
+  const [chartError, setChartError] = useState('');
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -27,7 +28,9 @@ function CandlestickChart({ stockId }) {
       grid:   { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.04)' } },
       rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)' },
       timeScale:       { borderColor: 'rgba(255,255,255,0.1)', timeVisible: true },
-      width:  containerRef.current.clientWidth,
+      // A zero width during the first layout pass can leave the canvas blank
+      // until the next resize. Start with a usable width and follow the parent.
+      width:  Math.max(containerRef.current.clientWidth, 1),
       height: 300,
     });
     chartRef.current = chart;
@@ -38,19 +41,36 @@ function CandlestickChart({ stockId }) {
     });
     seriesRef.current = series;
     const ro = new ResizeObserver(() => {
-      if (containerRef.current) chart.resize(containerRef.current.clientWidth, 300);
+      const width = containerRef.current?.clientWidth;
+      if (width > 0) chart.resize(width, 300);
     });
     ro.observe(containerRef.current);
-    return () => { ro.disconnect(); chart.remove(); };
+    return () => {
+      ro.disconnect();
+      chart.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
     if (!seriesRef.current || !stockId) return;
+    let active = true;
     setLoading(true);
+    setChartError('');
     getStockHistory(stockId, { timeframe, bars: 200 })
-      .then((d) => { seriesRef.current?.setData(d.candles || []); chartRef.current?.timeScale().fitContent(); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .then((d) => {
+        if (!active) return;
+        const candles = Array.isArray(d?.candles) ? d.candles : [];
+        if (!candles.length) throw new Error('No chart history is available for this stock.');
+        seriesRef.current?.setData(candles);
+        chartRef.current?.timeScale().fitContent();
+      })
+      .catch((error) => {
+        if (active) setChartError(error.message || 'Chart history could not be loaded.');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [stockId, timeframe]);
 
   return (
@@ -64,7 +84,10 @@ function CandlestickChart({ stockId }) {
         ))}
         {loading && <div className="w-4 h-4 border border-violet-500/30 border-t-violet-500 rounded-full animate-spin ml-2" />}
       </div>
-      <div ref={containerRef} className="w-full" />
+      <div className="relative w-full min-w-0 h-[300px]">
+        <div ref={containerRef} className="w-full h-full" />
+        {chartError && <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500">{chartError}</div>}
+      </div>
     </div>
   );
 }

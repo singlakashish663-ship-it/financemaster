@@ -3,6 +3,7 @@ const http = require('http');
 const app  = require('./app');
 const { connectDB } = require('./config/database');
 const logger = require('./utils/logger');
+const ensureMarketStocks = require('./seeds/ensureMarketStocks');
 
 const PORT = process.env.PORT || 5000;
 
@@ -10,6 +11,12 @@ async function start() {
   // Try DB — but don't crash if unavailable
   try {
     await connectDB();
+    try {
+      await ensureMarketStocks();
+      logger.info('Paper-trading stock universe is ready.');
+    } catch (err) {
+      logger.error('Paper-trading stock bootstrap failed:', err.message);
+    }
   } catch (err) {
     logger.warn('⚠️  MongoDB unavailable — server starting without DB. Set MONGODB_URI in .env to connect.');
     logger.warn('    Free Atlas: https://mongodb.com/atlas/database');
